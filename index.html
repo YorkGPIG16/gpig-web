@@ -599,7 +599,7 @@ draw.on('drawend', function(evt){
         });
     if (feature) {
 		if(typeof feature.getProperties().delete !=='undefined') {
-			$.ajax(baseurl+"app/strandedPerson/"+feature.getProperties().id,{type:'DELETE'})
+			$.ajax(baseurl+"push/strandedPerson/"+feature.getProperties().id,{type:'DELETE'})
 		} else {
 			$.ajax(baseurl+"deployAreas/delete/"+feature.getProperties().id,{type:'DELETE'})
 		}
