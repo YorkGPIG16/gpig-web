@@ -757,7 +757,11 @@ draw.on('drawend', function(evt){
 				$('#layer-dr-w').attr("checked","checked");
 
 				
-				
+				$('#rtb').click(function() {
+					$.post(baseurl + "push/rtb",{},function () {
+						
+					})
+				})
 			});	
 	
 		
@@ -863,6 +867,7 @@ draw.on('drawend', function(evt){
 					<h3>Actions</h3>
 					<button>Deploy Worker</button>
 					<button id="survey">Survey Area</button>
+					<button id="rtb">End Mission RTB</button>
 				</div>
 		
 			</div>
