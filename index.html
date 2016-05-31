@@ -384,6 +384,15 @@
 				spFeatures.addFeatures(formatter.readFeatures(strandedPeople,{dataProjection:'EPSG:4326', featureProjection:'EPSG:3857'}))
 			}
 			
+			redrawSP2 = function () {
+				formatter = new ol.format.GeoJSON()
+				
+				console.log("Redrawing SP2")
+				
+				spFeatures2.clear()
+				spFeatures2.addFeatures(formatter.readFeatures(strandedPeople2,{dataProjection:'EPSG:4326', featureProjection:'EPSG:3857'}))
+			}
+			
 			redrawBO = function () {
 				formatter = new ol.format.GeoJSON()
 				
