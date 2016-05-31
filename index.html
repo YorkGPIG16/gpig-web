@@ -127,6 +127,15 @@
 			})
 			
 		
+			var spMarker2 = new ol.style.RegularShape({
+			  fill: null,
+			  stroke: new ol.style.Stroke({color: 'red', width: 1}),
+			  points: 4,
+			  radius: 8,
+			
+			  angle: 0
+			})
+			
 			var boMarker = new ol.style.RegularShape({
 			  fill: new ol.style.Fill({
 					color:'orange',
@@ -187,6 +196,10 @@
 				return new ol.style.Style({image:spMarker})
       		};
 			
+			var spStyle2 = function(feature) {
+				return new ol.style.Style({image:spMarker2})
+      		};
+			
 			var boStyle = function(feature) {
 				console.log("got bo")
 				return new ol.style.Style({image:boMarker})
@@ -194,6 +207,7 @@
 			
 			
 			var strandedPeople = {}
+			var strandedPeople2 = {}
 			var buildingOccupancy = {}
 			
 			var actualFloodExtents = {}
@@ -229,6 +243,15 @@
 			var spLayer = new ol.layer.Vector({
 				source: spFeatures,
 				style: spStyle
+			});
+			
+			var spFeatures2 = new ol.source.Vector({
+				features:(new ol.format.GeoJSON()).readFeatures(strandedPeople2,{dataProjection:'EPSG:4326', featureProjection:'EPSG:3857'})
+			})
+			
+			var spLayer2 = new ol.layer.Vector({
+				source: spFeatures,
+				style: spStyle2
 			});
 			
 			var boFeatures = new ol.source.Vector({
@@ -435,6 +458,15 @@
 				})
 			}
 			
+			displaySP2 = function() {
+				console.log("Updating")
+				
+				$.get(baseurl+"layers/5",function(json) {
+					strandedPeople2 = json;
+					redrawSP2();
+				})
+			}
+			
 			displayBO = function() {
 				console.log("Updating BO")
 				
@@ -484,7 +516,7 @@
 						source: new ol.source.XYZ({
 							url: 'https://api.tiles.mapbox.com/v4/mapbox.light/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoianQ4MjIiLCJhIjoiY2lvdDAxZHg5MDAxd3Zia2p3d2E4dDl5cSJ9.jmwcHAQlOt4arl7FX5N9rw'	
 						})
-					}),	deploymentsLayer, droneLayer,droneLayerTracks,droneLayerWP, drawDeploymentAreas, populationLayer, riskLayer, vulnLayer,spLayer, boLayer, actualFloodLayer
+					}),	deploymentsLayer, droneLayer,droneLayerTracks,droneLayerWP, spLayer2 drawDeploymentAreas, populationLayer, riskLayer, vulnLayer,spLayer, boLayer, actualFloodLayer
 					],
 					target: 'map',
 					controls: ol.control.defaults({
@@ -614,6 +646,7 @@ draw.on('drawend', function(evt){
 				
 				setInterval(displayBO, 1000);
 				setInterval(displaySP, 1000);
+				setInterval(displaySP2, 1000);
 				
 				setInterval(displayExtents, 10000);
 				
