@@ -598,8 +598,13 @@ draw.on('drawend', function(evt){
             return feature;
         });
     if (feature) {
+		if(typeof feature.getProperties().delete !=='undefined') {
+			$.ajax(baseurl+"app/strandedPerson/"+feature.getProperties().id,{type:'DELETE'})
+		} else {
+			$.ajax(baseurl+"deployAreas/delete/"+feature.getProperties().id,{type:'DELETE'})
+		}
 		console.log(feature.getProperties().id)
-        $.ajax(baseurl+"deployAreas/delete/"+feature.getProperties().id,{type:'DELETE'})
+        
 		
     }
 });
