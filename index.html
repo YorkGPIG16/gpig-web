@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>GeoJSON</title>
+		
+		<link rel="stylesheet" href="ol.css" type="text/css">
+		<script src="ol.js"></script>
+		<script src="//code.jquery.com/jquery-2.2.4.min.js" ></script>
+
+		<script type="text/javascript">
+			var baseurl = "//localhost:8080/GPIGGroup2MapsServer/app/"
+			var staticurl = "//localhost:8080/GPIGGroup2MapsServer/static/"
+			
+			var rgb = function (r,g,b,fill) {
+				return 'hsla(' + Math.round(r) + ',' + Math.round(g) + '%,' + Math.round(b) + '%,'+fill+')';
+			  }
+			
+			var getColor = function(step,fill) {
+				r = (1-step)*0.4*255;
+				g = 70;
+				b = 70;
+				
+				return rgb(r,g,b,fill)
+				
+			}
+			
+			var getColor2 = function(step,fill) {
+				r = 220+ (step*70);
+				g = 90;
+				b = 40;
+				
+				return rgb(r,g,b,fill)
+				
+			}
+			
+										 
+			var styleFunction = function(feature) {
+        		return styles[feature.getGeometry().getType()];
+      		};
+			
+			var maxPrior = 350;
+			var minPrior = 100000;
+			var maxDensity = 250;
+			var minDensity = 100000;
+				
+			
+			var das = {}
+			var drones = {}
+			var vulnData = {}
+			var riskData = {}
+			var populationData = {}
+			
+			
+			var riskStyle = function(feature) {
+				
+				return new ol.style.Style({
+				  stroke: new ol.style.Stroke({
+					color: 'rgba(50,50,50,1)',
+					lineDash: [2],
+					width: 1
+				  }),
+				  fill: new ol.style.Fill({
+					color:'rgba(50,50,50,0.1)',
+				  })
+				})
+			};
+			
+			
+			var vulnStyle = function(feature) {
+				
+				return new ol.style.Style({
+				  stroke: new ol.style.Stroke({
+					color: 'yellow',
+					lineDash: [2],
+					width: 1
+				  })
+				 
+				})
+			};
+			
+			var heatmapStyle = function(feature) {
+				step = (feature.getProperties().value/maxPrior)
+				
+				return new ol.style.Style({
+				  stroke: new ol.style.Stroke({
+					color: getColor(step,1),
+					lineDash: [2],
+					width: 3
+				  }),
+				  fill: new ol.style.Fill({
+					color: getColor(step,0.3)
+				  })
+				})
+			};
+			
+		
+			var populationHeatmapStyle = function(feature) {
+				step = (feature.getProperties().value/maxDensity)
+			
+				return new ol.style.Style({
+          stroke: new ol.style.Stroke({
+            color: getColor2(step,1),
+            width: 1
+          }),
+          fill: new ol.style.Fill({
+            color:getColor2(step,0.3)
+          })
+        })
+			};
+			
+			
+			var droneMarker = new ol.style.Circle({
+        		radius: 5,
+        		fill: null,
+        		stroke: new ol.style.Stroke({color: 'blue', width: 1})
+      		});
+			
+			var spMarker = new ol.style.RegularShape({
+			  fill: new ol.style.Fill({
+					color:'red',
+				  }),
+			  stroke: new ol.style.Stroke({color: 'red', width: 1}),
+			  points: 4,
+			  radius: 8,
+			
+			  angle: 0
+			})
+			
+		
+			var boMarker = new ol.style.RegularShape({
+			  fill: new ol.style.Fill({
+					color:'orange',
+				  }),
+			  stroke: new ol.style.Stroke({color: 'orange', width: 1}),
+			  points: 3,
+			  radius: 8,
+			
+			  angle: 0
+			});
+			
+			
+			
+			var droneStyle = function(feature) {
+				
+				if(feature.getProperties().type == "current-location") {
+					return new ol.style.Style({image:droneMarker})
+				}
+				
+				
+				
+      		};
+			
+			
+			var droneStyleTracks = function(feature) {
+				
+				if (feature.getProperties().type == "history") {
+					return new ol.style.Style({
+					  stroke: new ol.style.Stroke({
+						color: 'rgba(0,0,255,0.5)',
+						width: 1,
+						lineDash: [2],
+					  })
+					})
+				}
+				
+				
+				
+      		};
+			
+			
+			var droneStyleWP = function(feature) {
+				
+					
+				if (feature.getProperties().type =="waypoints") {
+					return new ol.style.Style({
+					  stroke: new ol.style.Stroke({
+						color: 'rgba(0,0,255,0.7)',
+						width: 2
+					  })
+					})
+				}
+				
+      		};
+			
+		
+			var spStyle = function(feature) {
+				return new ol.style.Style({image:spMarker})
+      		};
+			
+			var boStyle = function(feature) {
+				console.log("got bo")
+				return new ol.style.Style({image:boMarker})
+      		};
+			
+			
+			var strandedPeople = {}
+			var buildingOccupancy = {}
+			
+			var actualFloodExtents = {}
+			
+			
+			var floodFeatures = new ol.source.Vector({
+				features:(new ol.format.GeoJSON()).readFeatures(actualFloodExtents,{dataProjection:'EPSG:4326', featureProjection:'EPSG:3857'})
+			})
+			
+			var actualFloodStyle = function(feature) {
+				
+				return new ol.style.Style({
+				  stroke: new ol.style.Stroke({
+					color: 'rgba(64,240,255,1)',
+					lineDash: [2],
+					width: 1
+				  }),
+				  fill: new ol.style.Fill({
+					color:'rgba(64,240,255,0.1)',
+				  })
+				})
+			};
+			
+			var actualFloodLayer = new ol.layer.Vector({
+				source: floodFeatures,
+				style: actualFloodStyle
+			});
+			
+			
+			var spFeatures = new ol.source.Vector({
+				features:(new ol.format.GeoJSON()).readFeatures(strandedPeople,{dataProjection:'EPSG:4326', featureProjection:'EPSG:3857'})
+			})
+			
+			var spLayer = new ol.layer.Vector({
+				source: spFeatures,
+				style: spStyle
+			});
+			
+			var boFeatures = new ol.source.Vector({
+				features:(new ol.format.GeoJSON()).readFeatures(buildingOccupancy,{dataProjection:'EPSG:4326', featureProjection:'EPSG:3857'})
+			})
+			
+			var boLayer = new ol.layer.Vector({
+				source: boFeatures,
+				style: boStyle
+			});
+			
+			
+			var deploymentsFeatures = new ol.source.Vector({
+        		features: (new ol.format.GeoJSON()).readFeatures(das,{dataProjection:'EPSG:4326', featureProjection:'EPSG:3857'})
+      		});
+							
+			var deploymentsLayer = new ol.layer.Vector({
+				source: deploymentsFeatures,
+				style: heatmapStyle
+			});
+			
+			
+			var droneSource = new ol.source.Vector({
+        		features: (new ol.format.GeoJSON()).readFeatures(drones,{dataProjection:'EPSG:4326', featureProjection:'EPSG:3857'})
+      		});
+							
+			var droneLayer = new ol.layer.Vector({
+				source: droneSource,
+				style: droneStyle
+			});
+			
+			var droneLayerTracks = new ol.layer.Vector({
+				source: droneSource,
+				style: droneStyleTracks
+			});
+			
+			var droneLayerWP = new ol.layer.Vector({
+				source: droneSource,
+				style: droneStyleWP
+			});
+			
+			
+			var riskFeatures = new ol.source.Vector({
+        		features: (new ol.format.GeoJSON()).readFeatures(riskData,{dataProjection:'EPSG:4326', featureProjection:'EPSG:3857'})
+      		});
+							
+			var riskLayer = new ol.layer.Vector({
+				source: riskFeatures,
+				style: riskStyle
+			});
+			
+			
+			var vulnFeatures = new ol.source.Vector({
+        		features: (new ol.format.GeoJSON()).readFeatures(vulnData,{dataProjection:'EPSG:4326', featureProjection:'EPSG:3857'})
+      		});
+							
+			var vulnLayer = new ol.layer.Vector({
+				source: vulnFeatures,
+				style: vulnStyle
+			});
+
+			
+			var populationFeatures = new ol.source.Vector({
+        		features: (new ol.format.GeoJSON()).readFeatures(populationData,{dataProjection:'EPSG:4326', featureProjection:'EPSG:3857'})
+      		});
+							
+			var populationLayer = new ol.layer.Vector({
+				source: populationFeatures,
+				style: populationHeatmapStyle
+			});
+			
+
+			var map = {}
+			
+	
+			redrawDas = function() {
+				formatter = new ol.format.GeoJSON()
+				
+				console.log("Adding new waypoints")
+				
+				deploymentsFeatures.clear()
+				deploymentsFeatures.addFeatures(formatter.readFeatures(das,{dataProjection:'EPSG:4326', featureProjection:'EPSG:3857'}))
+
+			}
+			
+			redrawDrones = function() {
+				formatter = new ol.format.GeoJSON()
+				
+				console.log("Redrawing Drones")
+				
+				droneSource.clear()
+				droneSource.addFeatures(formatter.readFeatures(drones,{dataProjection:'EPSG:4326', featureProjection:'EPSG:3857'}))
+
+			}
+			
+			
+			redrawVulns = function() {
+				formatter = new ol.format.GeoJSON()
+				
+				console.log("Redrawing Vuln")
+				
+				vulnFeatures.clear()
+				vulnFeatures.addFeatures(formatter.readFeatures(vulnData,{dataProjection:'EPSG:4326', featureProjection:'EPSG:3857'}))
+			}
+			
+			redrawDensity = function() {
+				formatter = new ol.format.GeoJSON()
+				
+				console.log("Redrawing Pop")
+				
+				populationFeatures.clear()
+				populationFeatures.addFeatures(formatter.readFeatures(populationData,{dataProjection:'EPSG:4326', featureProjection:'EPSG:3857'}))
+			}
+			
+			redrawRisk = function() {
+				formatter = new ol.format.GeoJSON()
+				
+				console.log("Redrawing Pop")
+				
+				riskFeatures.clear()
+				riskFeatures.addFeatures(formatter.readFeatures(riskData,{dataProjection:'EPSG:4326', featureProjection:'EPSG:3857'}))
+			}
+			
+			redrawSP = function () {
+				formatter = new ol.format.GeoJSON()
+				
+				console.log("Redrawing SP")
+				
+				spFeatures.clear()
+				spFeatures.addFeatures(formatter.readFeatures(strandedPeople,{dataProjection:'EPSG:4326', featureProjection:'EPSG:3857'}))
+			}
+			
+			redrawBO = function () {
+				formatter = new ol.format.GeoJSON()
+				
+				console.log("Redrawing BO")
+				boFeatures.clear()
+				boFeatures.addFeatures(formatter.readFeatures(buildingOccupancy,{dataProjection:'EPSG:4326', featureProjection:'EPSG:3857'}))
+			}
+			
+			
+			redrawExtents = function () {
+				formatter = new ol.format.GeoJSON()
+				
+				console.log("Redrawing BO")
+				floodFeatures.clear()
+				floodFeatures.addFeatures(formatter.readFeatures(actualFloodExtents,{dataProjection:'EPSG:4326', featureProjection:'EPSG:3857'}))
+			}
+			
+			
+			
+			
+			displayDAs = function() {
+					
+				maxPrior = 350;
+				minPrior = 100000;
+				console.log("Updating")
+				
+				$.get(baseurl+"deployAreas/forMap",function(json) {	
+					$.each(json.features,function(idx,val) {
+				
+						if(maxPrior< val.properties['value']) {
+					//		maxPrior = val.properties.value
+						} else if (minPrior > val.properties['value']) {
+							minPrior = val.properties.value
+						}
+						
+					});
+					
+					console.log("max prior " + maxPrior)
+					das = json;
+					redrawDas();
+		
+					
+					
+				})
+			}
+			
+			displayDrones = function() {
+				console.log("Updating")
+				
+				$.get(baseurl+"layers/1",function(json) {
+					drones = json;
+					redrawDrones();
+				})
+			}
+			
+			displayExtents = function() {
+				console.log("DisplayExtents")
+				
+				$.get(baseurl+"layers/4",function(json) {
+					actualFloodExtents = json;
+					redrawExtents();
+				})
+			}
+			
+			
+			displaySP = function() {
+				console.log("Updating")
+				
+				$.get(baseurl+"layers/2",function(json) {
+					strandedPeople = json;
+					redrawSP();
+				})
+			}
+			
+			displayBO = function() {
+				console.log("Updating BO")
+				
+				$.get(baseurl+"layers/3",function(json) {
+					buildingOccupancy = json;
+					redrawBO();
+				})
+			}
+			
+			
+			var drawDeploymentAreasSource = new ol.source.Vector({wrapX: false});
+			
+			var drawDeploymentAreas = new ol.layer.Vector({
+				source: drawDeploymentAreasSource,
+				style: new ol.style.Style({
+					fill: new ol.style.Fill({
+						color: 'rgba(255, 255, 255, 0.2)'
+					}),
+					stroke: new ol.style.Stroke({
+						color: '#ffcc33',
+						width: 2
+					}),
+					image: new ol.style.Circle({
+						radius: 7,
+						fill: new ol.style.Fill({
+							color: '#ffcc33'
+						})
+					})
+				})
+			});
+
+			
+		
+			
+			
+			
+			
+			initMap = function() {
+				
+				
+
+			
+				
+				map = new ol.Map({
+					layers: [
+						new ol.layer.Tile({
+						source: new ol.source.XYZ({
+							url: 'https://api.tiles.mapbox.com/v4/mapbox.light/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoianQ4MjIiLCJhIjoiY2lvdDAxZHg5MDAxd3Zia2p3d2E4dDl5cSJ9.jmwcHAQlOt4arl7FX5N9rw'	
+						})
+					}),	deploymentsLayer, droneLayer,droneLayerTracks,droneLayerWP, drawDeploymentAreas, populationLayer, riskLayer, vulnLayer,spLayer, boLayer, actualFloodLayer
+					],
+					target: 'map',
+					controls: ol.control.defaults({
+					attributionOptions: /** @type {olx.control.AttributionOptions} */ ({
+					collapsible: false
+					})
+					}),
+					view: new ol.View({
+					center: [0,0],
+					zoom: 13
+					})
+				});
+				
+				long = -1.099061966
+				lat = 53.951287449
+				map.getView().setCenter(ol.proj.transform([long, lat], 'EPSG:4326', 'EPSG:3857'));
+				
+				
+		
+            geometryFunction = function(coordinates, geometry) {
+				drawDeploymentAreasSource.clear()
+              if (!geometry) {
+                geometry = new ol.geom.Polygon(null);
+              }
+              var start = coordinates[0];
+              var end = coordinates[1];
+              geometry.setCoordinates([
+                [start, [start[0], end[1]], end, [end[0], start[1]], start]
+              ]);
+				
+		
+				
+				
+				
+              return geometry;
+            };
+				
+				
+				var start_drawing = false
+				draw = new ol.interaction.Draw({
+            source: drawDeploymentAreasSource,
+            type: ('LineString'),
+            geometryFunction: geometryFunction,
+            maxPoints: 2
+          });
+
+draw.on('drawend', function(evt){
+  
+	console.log(evt)
+	writer = new ol.format.GeoJSON()
+	console.log(writer.writeFeature(evt.feature,{dataProjection:'EPSG:4326', featureProjection:'EPSG:3857'}))
+	
+	$.ajax(baseurl+"deployAreas/create",{type:'POST',contentType:'application/json',data:writer.writeFeature(evt.feature,{dataProjection:'EPSG:4326', featureProjection:'EPSG:3857'}),complete:function(a,b){drawDeploymentAreasSource.clear()}})
+	console.log("finished draw")
+	drawing = false;
+	map.removeInteraction(draw);
+});
+				
+				
+				
+				
+				
+				
+				map.getViewport().addEventListener('contextmenu', function (e) {
+    e.preventDefault();
+
+    console.info('contextmenu');
+    var feature = map.forEachFeatureAtPixel(map.getEventPixel(e),
+        function (feature, layer) {
+            return feature;
+        });
+    if (feature) {
+		console.log(feature.getProperties().id)
+        $.ajax(baseurl+"deployAreas/delete/"+feature.getProperties().id,{type:'DELETE'})
+		
+    }
+});
+				
+				
+			
+				
+
+			}
+			
+			var drawing = false;
+			
+			
+			downloadRisk = function() {
+				$.get(staticurl+"risk.geojson",function(json) {	
+					riskData = json;
+					redrawRisk();	
+				});
+			}
+			
+			downloadDensity = function() {
+			
+				
+				$.get(staticurl+"population.geojson",function(json) {	
+					$.each(json.features,function(idx,val) {
+						if(maxDensity < val.properties['value']) {
+							maxDensity = val.properties.value
+						} else if (minDensity > val.properties['value']) {
+							minDensity = val.properties.value
+						}
+						
+					});
+					
+					
+					
+					populationData = json;
+					redrawDensity();	
+				});
+			}
+			downloadVulns = function() {
+				$.get(staticurl+"vulnerable.geojson",function(json) {	
+					vulnData = json;
+					redrawVulns();	
+				});
+			}
+				
+			
+			
+			$(document).ready(function() {
+				console.log("starting")
+				setInterval(displayDAs, 1000);
+				setInterval(displayDrones, 1000);
+				
+				setInterval(displayBO, 1000);
+				setInterval(displaySP, 1000);
+				
+				setInterval(displayExtents, 10000);
+				
+				downloadRisk();
+				downloadDensity();
+				downloadVulns();
+				
+				
+				initMap();
+				
+				$("#survey").click(function(){
+					if(!drawing) {
+						drawing = true;
+						map.addInteraction(draw);
+					} else {
+						drawing = false;
+						map.removeInteraction(draw);
+					}
+				})
+				
+				
+				populationLayer.setVisible(false);
+				riskLayer.setVisible(false);
+				vulnLayer.setVisible(false);
+				
+				droneLayerTracks.setVisible(true);
+				
+				droneLayerWP.setVisible(true);
+				droneLayer.setVisible(true);
+				actualFloodLayer.setVisible(false)
+				
+				$('#layer-population').change(function() {
+					populationLayer.setVisible($(this).is(":checked"))
+				});
+				
+				
+				$('#layer-risk').change(function() {
+					riskLayer.setVisible($(this).is(":checked"))
+				});
+				
+				
+				$('#layer-deploy').change(function() {
+					deploymentsLayer.setVisible($(this).is(":checked"))
+				});
+				
+				$('#layer-vuln').change(function() {
+					vulnLayer.setVisible($(this).is(":checked"))
+				});
+				
+				$('#layer-sp').change(function() {
+					spLayer.setVisible($(this).is(":checked"))
+				});
+				
+				$('#layer-bo').change(function() {
+					boLayer.setVisible($(this).is(":checked"))
+				});
+				
+				
+				
+				$('#layer-dr').change(function() {
+					droneLayer.setVisible($(this).is(":checked"))
+				});
+				
+				$('#layer-dr-t').change(function() {
+					droneLayerTracks.setVisible($(this).is(":checked"))
+				});
+				
+				$('#layer-dr-w').change(function() {
+					droneLayerWP.setVisible($(this).is(":checked"))
+				});
+				
+				
+				$('#layer-fe').change(function() {
+					actualFloodLayer.setVisible($(this).is(":checked"))
+				});
+				
+				
+				
+			
+				deploymentsLayer.setVisible(true);
+				$('#layer-deploy').attr("checked","checked");
+				
+				
+				spLayer.setVisible(true);
+				$('#layer-sp').attr("checked","checked");
+
+				boLayer.setVisible(true);
+				$('#layer-bo').attr("checked","checked");
+
+				$('#layer-dr').attr("checked","checked");
+				$('#layer-dr-t').attr("checked","checked");
+				
+				$('#layer-dr-w').attr("checked","checked");
+
+				
+				
+			});	
+	
+		
+		</script>
+		
+		<link href='https://fonts.googleapis.com/css?family=Titillium+Web' rel='stylesheet' type='text/css'>
+		<style> 
+		
+			html, body {
+				margin:0; padding:0;
+				overflow: hidden;
+			}
+		
+			
+			#header {
+				width:100%;
+				height:120px;
+				background-color:black;
+				padding-left:40px;
+			}
+			
+			#header h1 {
+				margin:0; padding:0;
+				line-height: 60px;
+				color:white;
+				font-family: 'Titillium Web', sans-serif;
+			
+			}
+		
+			#header h2 {
+				margin:0; padding:0;
+				line-height: 20px;
+				font-size:16px;
+				color:white;
+				font-family: 'Titillium Web', sans-serif;
+			
+			}
+			
+			#map {
+				position: absolute;
+				top:120px;
+				bottom: 0px;
+				left:0;
+				right:0;
+			}
+			
+			#layerselect {
+				text-align: right;
+			}
+			
+			.layerselection {
+				color:white;
+				font-family: 'Titillium Web', sans-serif;
+				float:right;
+				padding-right: 40px;
+				padding-top: 10px;
+				text-align: left;
+				font-size:12px;
+			}
+			
+			.layerselection h3 {
+				font-size:15px;
+				margin: 0;
+				padding: 0;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="header">
+			<div id="layerselect">
+				
+				<div class="layerselection">
+				</div>
+				<div class="layerselection">
+					<h3>Environment</h3>
+					<input id="layer-risk" type="checkbox" /> Flood Risk <br />
+					<input id="layer-fe" type="checkbox" /> Flood Extents<br />
+					<input id="layer-population" type="checkbox" /> Population Density<br />
+					<input id="layer-vuln" type="checkbox" /> Vulnerable Persons
+				</div>
+				
+				<div class="layerselection">
+					<h3>Assets</h3>
+					<input id="layer-dr" type="checkbox" /> Drone <br />
+					<input id="layer-dr-t" type="checkbox" /> Drone Tracks <br />
+					<input id="layer-dr-w" type="checkbox" /> Drone Waypoints <br />
+					<input type="checkbox" /> Responder 
+				</div>
+				
+				<div class="layerselection">
+					<h3>Survey</h3>
+					<input id="layer-deploy" type="checkbox" /> Deployments 
+				</div>
+		
+				<div class="layerselection">
+					<h3>Detections</h3>
+					<input id="layer-sp" type="checkbox" /> Stranded Person<br />
+					<input id="layer-bo" type="checkbox" /> Occupied Building
+				</div>
+			
+				
+				<div class="layerselection">
+					<h3>Actions</h3>
+					<button>Deploy Worker</button>
+					<button id="survey">Survey Area</button>
+				</div>
+		
+			</div>
+			
+			
+			<h1>GPIG Group 2</h1><h2>Live Situational Overview</h2>
+			
+			
+		
+		</div>
+		<div id="map" class="map"></div>
+
+		
+	</body>
+</html>
