@@ -800,7 +800,7 @@ drawResp.on('drawend', function(evt){
 				
 				$("#survey").click(function(){
 					
-					if(drawingResp) 
+					if(drawingResp) {
 						drawingResp = false;
 						map.removeInteraction(drawResp);
 					}
