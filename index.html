@@ -816,7 +816,7 @@ drawResp.on('drawend', function(evt){
 				
 				
 				$("#deploy").click(function(){
-					if(drawing) 
+					if(drawing) {
 						drawing = false;
 						map.removeInteraction(draw);
 					}
