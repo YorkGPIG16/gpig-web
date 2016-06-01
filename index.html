@@ -115,6 +115,17 @@
         		stroke: new ol.style.Stroke({color: 'blue', width: 1})
       		});
 			
+			
+			var responderMarker = new ol.style.Circle({
+        		radius: 5,
+        		fill: new ol.style.Fill({
+					color:'green',
+				  }),,
+        		stroke: new ol.style.Stroke({color: 'green', width: 1})
+      		});
+			
+			
+			
 			var spMarker = new ol.style.RegularShape({
 			  fill: new ol.style.Fill({
 					color:'red',
@@ -153,6 +164,17 @@
 				
 				if(feature.getProperties().type == "current-location") {
 					return new ol.style.Style({image:droneMarker})
+				}
+				
+				
+				
+      		};
+			
+			
+			var responderStyle = function(feature) {
+				
+				if(feature.getProperties().type == "current-location") {
+					return new ol.style.Style({image:responderMarker})
 				}
 				
 				
@@ -211,7 +233,7 @@
 			var buildingOccupancy = {}
 			
 			var actualFloodExtents = {}
-			
+			var responders = {}
 			
 			var floodFeatures = new ol.source.Vector({
 				features:(new ol.format.GeoJSON()).readFeatures(actualFloodExtents,{dataProjection:'EPSG:4326', featureProjection:'EPSG:3857'})
@@ -261,6 +283,17 @@
 			var boLayer = new ol.layer.Vector({
 				source: boFeatures,
 				style: boStyle
+			});
+			
+			
+			
+			var responderFeatures = new ol.source.Vector({
+        		features: (new ol.format.GeoJSON()).readFeatures(responders,{dataProjection:'EPSG:4326', featureProjection:'EPSG:3857'})
+      		});
+			
+			var responderLayer = new ol.layer.Vector({
+				source: responderFeatures,
+				style: responderStyle
 			});
 			
 			
@@ -410,6 +443,15 @@
 				floodFeatures.addFeatures(formatter.readFeatures(actualFloodExtents,{dataProjection:'EPSG:4326', featureProjection:'EPSG:3857'}))
 			}
 			
+			redrawResponders = function () {
+				formatter = new ol.format.GeoJSON()
+				
+				console.log("Redrawing BO")
+				responderFeatures.clear()
+				responderFeatures.addFeatures(formatter.readFeatures(responders,{dataProjection:'EPSG:4326', featureProjection:'EPSG:3857'}))
+			}
+			
+			
 			
 			
 			
@@ -476,6 +518,15 @@
 				})
 			}
 			
+			displayResponders = function() {
+				console.log("Updating")
+				
+				$.get(baseurl+"layers/6",function(json) {
+					responders = json;
+					redrawResponders();
+				})
+			}
+			
 			displayBO = function() {
 				console.log("Updating BO")
 				
@@ -525,7 +576,7 @@
 						source: new ol.source.XYZ({
 							url: 'https://api.tiles.mapbox.com/v4/mapbox.light/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoianQ4MjIiLCJhIjoiY2lvdDAxZHg5MDAxd3Zia2p3d2E4dDl5cSJ9.jmwcHAQlOt4arl7FX5N9rw'	
 						})
-					}),	deploymentsLayer, droneLayer,droneLayerTracks,droneLayerWP, spLayer2, drawDeploymentAreas, populationLayer, riskLayer, vulnLayer,spLayer, boLayer, actualFloodLayer
+					}),	deploymentsLayer,responderLayer, droneLayer,droneLayerTracks,droneLayerWP, spLayer2, drawDeploymentAreas, populationLayer, riskLayer, vulnLayer,spLayer, boLayer, actualFloodLayer
 					],
 					target: 'map',
 					controls: ol.control.defaults({
@@ -738,6 +789,10 @@ draw.on('drawend', function(evt){
 					actualFloodLayer.setVisible($(this).is(":checked"))
 				});
 				
+				$('#layer-resp').change(function() {
+					responderLayer.setVisible($(this).is(":checked"))
+				});
+				
 				
 				
 			
@@ -756,6 +811,7 @@ draw.on('drawend', function(evt){
 				
 				$('#layer-dr-w').attr("checked","checked");
 
+				$("#layer-resp").attr("checked","checked")
 				
 				$('#rtb').click(function() {
 					$.post(baseurl + "push/rtb",{},function () {
@@ -848,7 +904,7 @@ draw.on('drawend', function(evt){
 					<input id="layer-dr" type="checkbox" /> Drone <br />
 					<input id="layer-dr-t" type="checkbox" /> Drone Tracks <br />
 					<input id="layer-dr-w" type="checkbox" /> Drone Waypoints <br />
-					<input type="checkbox" /> Responder 
+					<input id="layer-resp" type="checkbox" /> Responder 
 				</div>
 				
 				<div class="layerselection">
@@ -868,6 +924,7 @@ draw.on('drawend', function(evt){
 					<button>Deploy Worker</button>
 					<button id="survey">Survey Area</button>
 					<button id="rtb">End Mission RTB</button>
+					
 				</div>
 		
 			</div>
