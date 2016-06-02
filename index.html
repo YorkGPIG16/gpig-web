@@ -292,7 +292,8 @@
 			
 			var responderLayer = new ol.layer.Vector({
 				source: responderFeatures,
-				style: responderStyle
+				style: responderStyle,
+				
 			});
 			
 			
@@ -917,6 +918,9 @@ drawResp.on('drawend', function(evt){
 						
 					})
 				})
+				
+				
+				responderLayer.setZIndex(1000)
 			});	
 	
 		
